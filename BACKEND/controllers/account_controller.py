@@ -77,15 +77,31 @@ def withdraw():
     if request.method == 'GET':
         return render_template('withdraw.html')
 
-    amount, error = _validate_amount(request.form.get('amount'))
-    if error:
-        flash(error, 'error')
+    raw_amount = request.form.get('amount')
+
+    # Validation check 1: amount field must not be empty
+    if not raw_amount or not raw_amount.strip():
+        flash('Amount is required', 'error')
         return render_template('withdraw.html')
 
+    # Validation check 2: amount must be a positive number
+    try:
+        amount_value = float(raw_amount)
+    except ValueError:
+        amount_value = 0
+    if amount_value <= 0:
+        flash('Amount must be greater than zero', 'error')
+        return render_template('withdraw.html')
+
+    # Validation check 3: amount must not exceed current balance
     user = _get_current_user()
-    if amount > user['balance']:
-        flash('Insufficient funds. Your current balance is '
-              f'${user["balance"]:,.2f}.', 'error')
+    if amount_value > user['balance']:
+        flash('Insufficient funds', 'error')
+        return render_template('withdraw.html')
+
+    amount, error = _validate_amount(raw_amount)
+    if error:
+        flash(error, 'error')
         return render_template('withdraw.html')
 
     conn = get_db()
